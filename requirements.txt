@@ -8,3 +8,4 @@ pypdf==6.10.2
 python-dotenv==1.2.2
 requests==2.33.1
 pydantic==2.13.3
+groq==0.28.0

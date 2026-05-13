@@ -2,6 +2,10 @@ import json
 import os
 import requests
 
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+GROQ_MODEL = "llama3-8b-8192"
+GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
+
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434/api/generate")
 OLLAMA_MODEL = "llama3.2:1b"
 
@@ -32,6 +36,34 @@ Respond with this JSON structure:
 }}"""
 
 
+def _generate_groq(prompt):
+    response = requests.post(
+        GROQ_URL,
+        headers={"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"},
+        json={
+            "model": GROQ_MODEL,
+            "messages": [
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": prompt},
+            ],
+            "response_format": {"type": "json_object"},
+        },
+    )
+    response.raise_for_status()
+    return json.loads(response.json()["choices"][0]["message"]["content"])
+
+
+def _generate_ollama(prompt):
+    response = requests.post(OLLAMA_URL, json={
+        "model": OLLAMA_MODEL,
+        "prompt": f"{SYSTEM_PROMPT}\n\n{prompt}",
+        "stream": False,
+        "format": "json",
+    })
+    response.raise_for_status()
+    return json.loads(response.json()["response"])
+
+
 def generate_response(query, chunks):
     if not chunks:
         return {
@@ -41,14 +73,8 @@ def generate_response(query, chunks):
         }
 
     context = "\n\n".join(chunks)
-    prompt = f"{SYSTEM_PROMPT}\n\n{PROMPT_TEMPLATE.format(context=context, query=query)}"
+    prompt = PROMPT_TEMPLATE.format(context=context, query=query)
 
-    response = requests.post(OLLAMA_URL, json={
-        "model": OLLAMA_MODEL,
-        "prompt": prompt,
-        "stream": False,
-        "format": "json",
-    })
-    response.raise_for_status()
-
-    return json.loads(response.json()["response"])
+    if GROQ_API_KEY:
+        return _generate_groq(prompt)
+    return _generate_ollama(prompt)
