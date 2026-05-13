@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Get-ChildItem \"c:\\\\Users\\\\pavan\\\\OneDrive\\\\Desktop\\\\ai-risk-engine\" -Force -Name | Where-Object { $_ -notmatch \"^env\" })",
+      "PowerShell(Start-Process -FilePath \"c:\\\\Users\\\\pavan\\\\OneDrive\\\\Desktop\\\\ai-risk-engine\\\\env\\\\Scripts\\\\uvicorn.exe\" -ArgumentList \"service.main:app\", \"--host\", \"127.0.0.1\", \"--port\", \"8000\" -WorkingDirectory \"c:\\\\Users\\\\pavan\\\\OneDrive\\\\Desktop\\\\ai-risk-engine\" -PassThru -WindowStyle Hidden)",
+      "PowerShell(Invoke-RestMethod -Uri \"http://127.0.0.1:8000/\" -Method GET)",
+      "Skill(claude-api)",
+      "Skill(claude-api:*)",
+      "PowerShell(& \"c:\\\\Users\\\\pavan\\\\OneDrive\\\\Desktop\\\\ai-risk-engine\\\\env\\\\Scripts\\\\pip.exe\" install anthropic)",
+      "PowerShell(& \"c:\\\\Users\\\\pavan\\\\OneDrive\\\\Desktop\\\\ai-risk-engine\\\\env\\\\Scripts\\\\pip.exe\" install google-generativeai)",
+      "PowerShell(Get-ChildItem \"c:\\\\Users\\\\pavan\\\\OneDrive\\\\Desktop\\\\ai-risk-engine\" | Where-Object { $_.Name -ne \"env\" } | Format-Table Name, PSIsContainer -AutoSize)",
+      "PowerShell(Get-ChildItem \"c:\\\\Users\\\\pavan\\\\OneDrive\\\\Desktop\\\\ai-risk-engine\\\\service\" -Recurse | Where-Object { !$_.PSIsContainer } | Select-Object FullName | Format-Table -AutoSize)"
+    ]
+  }
+}

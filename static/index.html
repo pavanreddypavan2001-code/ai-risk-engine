@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AI Risk Engine</title>
+  <style>
+    :root {
+      --bg: #080c14;
+      --surface: #0f1623;
+      --surface2: #161f30;
+      --border: #1e2d45;
+      --accent: #3b82f6;
+      --accent2: #6366f1;
+      --text: #e2e8f0;
+      --muted: #64748b;
+      --low: #22c55e;
+      --moderate: #eab308;
+      --high: #f97316;
+      --critical: #ef4444;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── HEADER ── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 32px;
+      height: 60px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .logo-icon {
+      width: 32px; height: 32px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--low); animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+    /* ── LAYOUT ── */
+    .layout {
+      display: grid;
+      grid-template-columns: 380px 1fr;
+      gap: 0;
+      min-height: calc(100vh - 60px);
+    }
+
+    /* ── LEFT PANEL ── */
+    .left-panel {
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      overflow-y: auto;
+    }
+
+    .section-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      margin-bottom: 12px;
+    }
+
+    /* Upload */
+    #drop-zone {
+      border: 1.5px dashed var(--border);
+      border-radius: 12px;
+      padding: 32px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: var(--surface2);
+    }
+
+    #drop-zone:hover, #drop-zone.dragover {
+      border-color: var(--accent);
+      background: #0f1e35;
+    }
+
+    #drop-zone .upload-icon {
+      width: 48px; height: 48px;
+      background: linear-gradient(135deg, #1e3a5f, #1e2d45);
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
+      margin: 0 auto 12px;
+    }
+
+    #drop-zone p { font-size: 13px; color: var(--muted); }
+    #drop-zone span { color: var(--accent); font-weight: 600; }
+    #file-input { display: none; }
+
+    #file-name {
+      margin-top: 10px;
+      font-size: 12px;
+      color: var(--low);
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 11px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+
+    .btn-green { background: #166534; color: #86efac; }
+    .btn-green:hover:not(:disabled) { background: #15803d; }
+    .btn-green:disabled { background: var(--surface2); color: var(--muted); cursor: not-allowed; }
+
+    .btn-blue { background: #1e3a5f; color: #93c5fd; }
+    .btn-blue:hover:not(:disabled) { background: #1d4ed8; color: #fff; }
+    .btn-blue:disabled { background: var(--surface2); color: var(--muted); cursor: not-allowed; }
+
+    #upload-status { font-size: 12px; margin-top: 8px; min-height: 20px; }
+
+    /* Question input */
+    textarea {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font-size: 13.5px;
+      padding: 12px 14px;
+      resize: vertical;
+      min-height: 90px;
+      font-family: inherit;
+      line-height: 1.5;
+      transition: border-color 0.2s;
+    }
+
+    textarea:focus { outline: none; border-color: var(--accent); }
+    textarea::placeholder { color: var(--muted); }
+
+    /* History */
+    .history-list { display: flex; flex-direction: column; gap: 8px; }
+
+    .history-item {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .history-item:hover { border-color: var(--accent); background: #0f1e35; }
+
+    .history-q {
+      font-size: 12px;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      flex: 1;
+    }
+
+    .history-badge {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 20px;
+      white-space: nowrap;
+    }
+
+    .badge-Low      { background: #052e16; color: var(--low); }
+    .badge-Moderate { background: #422006; color: var(--moderate); }
+    .badge-High     { background: #431407; color: var(--high); }
+    .badge-Critical { background: #450a0a; color: var(--critical); }
+    .badge-none     { background: var(--surface); color: var(--muted); }
+
+    /* ── RIGHT PANEL ── */
+    .right-panel {
+      padding: 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      overflow-y: auto;
+    }
+
+    /* Empty state */
+    #empty-state {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .empty-icon {
+      width: 72px; height: 72px;
+      background: var(--surface2);
+      border-radius: 20px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 32px;
+      border: 1px solid var(--border);
+    }
+
+    #empty-state h2 { font-size: 18px; color: var(--text); }
+    #empty-state p  { font-size: 13px; max-width: 320px; line-height: 1.6; }
+
+    /* Loading state */
+    #loading-state {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      flex: 1;
+      gap: 20px;
+      color: var(--muted);
+    }
+
+    .loader-ring {
+      width: 56px; height: 56px;
+      border-radius: 50%;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      animation: spin 0.9s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    #loading-state p { font-size: 14px; }
+
+    /* Result */
+    #result-area { display: none; flex-direction: column; gap: 20px; }
+
+    /* Gauge card */
+    .gauge-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px;
+      display: flex;
+      align-items: center;
+      gap: 32px;
+    }
+
+    .gauge-wrap { position: relative; width: 140px; height: 140px; flex-shrink: 0; }
+
+    .gauge-wrap svg { transform: rotate(-90deg); }
+
+    .gauge-bg { fill: none; stroke: var(--surface2); stroke-width: 10; }
+    .gauge-fill { fill: none; stroke-width: 10; stroke-linecap: round; transition: stroke-dashoffset 1s ease, stroke 0.5s; }
+
+    .gauge-center {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    .gauge-score { font-size: 34px; font-weight: 800; line-height: 1; }
+    .gauge-label { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+    .gauge-info { flex: 1; }
+
+    .gauge-info .question-text {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 12px;
+      line-height: 1.5;
+      font-style: italic;
+    }
+
+    .risk-level-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 14px;
+      font-weight: 700;
+      padding: 6px 16px;
+      border-radius: 20px;
+      margin-bottom: 16px;
+    }
+
+    .level-Low      { background: #052e16; color: var(--low); border: 1px solid #166534; }
+    .level-Moderate { background: #422006; color: var(--moderate); border: 1px solid #854d0e; }
+    .level-High     { background: #431407; color: var(--high); border: 1px solid #9a3412; }
+    .level-Critical { background: #450a0a; color: var(--critical); border: 1px solid #991b1b; }
+
+    .score-bar-wrap { display: flex; flex-direction: column; gap: 6px; }
+
+    .score-bar-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 10px;
+      color: var(--muted);
+    }
+
+    .score-bar-track {
+      height: 6px;
+      background: var(--surface2);
+      border-radius: 4px;
+      position: relative;
+      overflow: visible;
+    }
+
+    .score-bar-zones {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .zone { height: 100%; opacity: 0.25; }
+    .zone-low      { flex: 39; background: var(--low); }
+    .zone-moderate { flex: 25; background: var(--moderate); }
+    .zone-high     { flex: 20; background: var(--high); }
+    .zone-critical { flex: 16; background: var(--critical); }
+
+    .score-bar-fill {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 14px; height: 14px;
+      border-radius: 50%;
+      border: 2px solid var(--bg);
+      transition: left 1s ease;
+      z-index: 2;
+    }
+
+    /* Answer card */
+    .answer-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px;
+    }
+
+    .answer-card h3 {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .answer-card h3::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    .answer-body {
+      font-size: 15px;
+      line-height: 1.75;
+      color: #cbd5e1;
+    }
+
+    /* Status messages */
+    .msg { font-size: 12px; display: flex; align-items: center; gap: 6px; }
+    .msg.ok   { color: var(--low); }
+    .msg.err  { color: var(--critical); }
+    .msg.info { color: var(--accent); }
+
+    /* Divider */
+    .divider { height: 1px; background: var(--border); }
+
+    /* Spinner inline */
+    .spin-sm {
+      display: inline-block;
+      width: 12px; height: 12px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">⚡</div>
+    AI Risk Engine
+  </div>
+  <div class="header-right">
+    <div class="dot"></div>
+    Mistral · Local &amp; Private
+  </div>
+</header>
+
+<div class="layout">
+
+  <!-- LEFT PANEL -->
+  <div class="left-panel">
+
+    <!-- Upload -->
+    <div>
+      <div class="section-label">Document</div>
+      <div id="drop-zone" onclick="document.getElementById('file-input').click()">
+        <div class="upload-icon">📄</div>
+        <p>Drag &amp; drop a PDF, or <span>browse</span></p>
+        <div id="file-name"></div>
+      </div>
+      <input type="file" id="file-input" accept=".pdf" />
+      <button class="btn btn-green" id="upload-btn" style="margin-top:12px;" disabled onclick="uploadFile()">
+        Upload PDF
+      </button>
+      <div id="upload-status"></div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Ask -->
+    <div>
+      <div class="section-label">Ask a Question</div>
+      <textarea id="query-input" placeholder="e.g. What are the key financial risks? Is this company overleveraged?"></textarea>
+      <button class="btn btn-blue" id="ask-btn" style="margin-top:12px;" onclick="askQuestion()">
+        Analyze Risk
+      </button>
+      <div id="ask-status" style="margin-top:8px;"></div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- History -->
+    <div>
+      <div class="section-label">History</div>
+      <div class="history-list" id="history-list">
+        <div style="font-size:12px; color:var(--muted);">No queries yet.</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="right-panel">
+
+    <!-- Empty state -->
+    <div id="empty-state">
+      <div class="empty-icon">📊</div>
+      <h2>No Analysis Yet</h2>
+      <p>Upload a financial PDF on the left, then ask a risk question to see the assessment here.</p>
+    </div>
+
+    <!-- Loading state -->
+    <div id="loading-state">
+      <div class="loader-ring"></div>
+      <p>Analyzing with local AI — this may take 15–30 seconds...</p>
+    </div>
+
+    <!-- Result -->
+    <div id="result-area">
+
+      <!-- Gauge card -->
+      <div class="gauge-card">
+        <div class="gauge-wrap">
+          <svg width="140" height="140" viewBox="0 0 140 140">
+            <circle class="gauge-bg" cx="70" cy="70" r="58"/>
+            <circle class="gauge-fill" id="gauge-circle" cx="70" cy="70" r="58"
+              stroke-dasharray="364.4"
+              stroke-dashoffset="364.4"/>
+          </svg>
+          <div class="gauge-center">
+            <div class="gauge-score" id="gauge-score">—</div>
+            <div class="gauge-label">/ 100</div>
+          </div>
+        </div>
+
+        <div class="gauge-info">
+          <div class="question-text" id="result-question"></div>
+          <div class="risk-level-pill" id="risk-pill"></div>
+
+          <div class="score-bar-wrap">
+            <div class="score-bar-labels">
+              <span>Low</span><span>Moderate</span><span>High</span><span>Critical</span>
+            </div>
+            <div class="score-bar-track">
+              <div class="score-bar-zones">
+                <div class="zone zone-low"></div>
+                <div class="zone zone-moderate"></div>
+                <div class="zone zone-high"></div>
+                <div class="zone zone-critical"></div>
+              </div>
+              <div class="score-bar-fill" id="score-marker"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Answer card -->
+      <div class="answer-card">
+        <h3>Analyst Assessment</h3>
+        <div class="answer-body" id="answer-body"></div>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+<script>
+  // ── Drag & drop ──
+  const dropZone = document.getElementById('drop-zone');
+  const fileInput = document.getElementById('file-input');
+  let selectedFile = null;
+  let history = [];
+
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault(); dropZone.classList.remove('dragover');
+    const f = e.dataTransfer.files[0];
+    if (f && f.name.endsWith('.pdf')) setFile(f);
+  });
+  fileInput.addEventListener('change', () => { if (fileInput.files[0]) setFile(fileInput.files[0]); });
+
+  function setFile(f) {
+    selectedFile = f;
+    document.getElementById('file-name').innerHTML = '✓ ' + f.name;
+    document.getElementById('upload-btn').disabled = false;
+  }
+
+  // ── Upload ──
+  async function uploadFile() {
+    if (!selectedFile) return;
+    const btn = document.getElementById('upload-btn');
+    const status = document.getElementById('upload-status');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spin-sm"></span> Uploading...';
+    status.innerHTML = '';
+
+    const form = new FormData();
+    form.append('file', selectedFile);
+
+    try {
+      const res = await fetch('/upload', { method: 'POST', body: form });
+      const data = await res.json();
+      if (res.ok) {
+        status.innerHTML = `<div class="msg ok">✓ ${data.message} &mdash; ${data.chunks_stored} chunks indexed</div>`;
+      } else {
+        status.innerHTML = `<div class="msg err">✗ ${data.detail}</div>`;
+      }
+    } catch (e) {
+      status.innerHTML = `<div class="msg err">✗ ${e.message}</div>`;
+    }
+
+    btn.disabled = false;
+    btn.innerHTML = 'Upload PDF';
+  }
+
+  // ── Ask ──
+  async function askQuestion() {
+    const query = document.getElementById('query-input').value.trim();
+    if (!query) return;
+
+    const btn = document.getElementById('ask-btn');
+    const askStatus = document.getElementById('ask-status');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spin-sm"></span> Analyzing...';
+    askStatus.innerHTML = '';
+
+    showLoading(true);
+
+    try {
+      const res = await fetch('/ask', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showResult(data);
+        addHistory(data);
+      } else {
+        askStatus.innerHTML = `<div class="msg err">✗ ${data.detail}</div>`;
+        showLoading(false);
+      }
+    } catch (e) {
+      askStatus.innerHTML = `<div class="msg err">✗ ${e.message}</div>`;
+      showLoading(false);
+    }
+
+    btn.disabled = false;
+    btn.innerHTML = 'Analyze Risk';
+  }
+
+  function showLoading(on) {
+    document.getElementById('empty-state').style.display = 'none';
+    document.getElementById('loading-state').style.display = on ? 'flex' : 'none';
+    document.getElementById('result-area').style.display = 'none';
+  }
+
+  const COLORS = { Low: '#22c55e', Moderate: '#eab308', High: '#f97316', Critical: '#ef4444' };
+  const CIRCUMFERENCE = 364.4;
+
+  function showResult(data) {
+    const score = data.risk_score ?? 0;
+    const level = data.risk_level ?? 'Low';
+    const color = COLORS[level] || '#3b82f6';
+
+    // Gauge
+    document.getElementById('gauge-score').textContent = score;
+    document.getElementById('gauge-score').style.color = color;
+    const circle = document.getElementById('gauge-circle');
+    circle.style.stroke = color;
+    setTimeout(() => {
+      circle.style.strokeDashoffset = CIRCUMFERENCE - (score / 100) * CIRCUMFERENCE;
+    }, 50);
+
+    // Risk pill
+    const pill = document.getElementById('risk-pill');
+    pill.textContent = level;
+    pill.className = 'risk-level-pill level-' + level;
+
+    // Marker on bar
+    const marker = document.getElementById('score-marker');
+    marker.style.left = `calc(${score}% - 7px)`;
+    marker.style.background = color;
+
+    // Question + answer
+    document.getElementById('result-question').textContent = '❝ ' + data.question + ' ❞';
+    document.getElementById('answer-body').textContent = data.answer;
+
+    document.getElementById('loading-state').style.display = 'none';
+    const ra = document.getElementById('result-area');
+    ra.style.display = 'flex';
+  }
+
+  function addHistory(data) {
+    history.unshift(data);
+    const list = document.getElementById('history-list');
+    list.innerHTML = history.map((h, i) => `
+      <div class="history-item" onclick="restoreResult(${i})">
+        <span class="history-q">${h.question}</span>
+        <span class="history-badge badge-${h.risk_level ?? 'none'}">${h.risk_level ?? '—'}</span>
+      </div>
+    `).join('');
+  }
+
+  function restoreResult(i) {
+    showResult(history[i]);
+  }
+</script>
+
+</body>
+</html>

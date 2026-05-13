@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(ollama --version 2>&1)",
+      "PowerShell(ollama list 2>&1)",
+      "PowerShell(ollama ps 2>&1)",
+      "Bash(curl -s -X POST \"http://127.0.0.1:8000/ask\" -H \"Content-Type: application/json\" -d \"{\\\\\"query\\\\\": \\\\\"What are Tesla's key financial risks?\\\\\"}\")",
+      "PowerShell(Start-Process \"http://127.0.0.1:8000/docs\")",
+      "Bash(mkdir -p \"c:\\\\Users\\\\pavan\\\\OneDrive\\\\Desktop\\\\ai-risk-engine\\\\static\")",
+      "PowerShell(Start-Process \"http://127.0.0.1:8000\")",
+      "Bash(curl -s http://127.0.0.1:8000/)",
+      "Bash(curl -s -X POST \"http://127.0.0.1:8000/ask\" -H \"Content-Type: application/json\" -d \"{\\\\\"query\\\\\": \\\\\"test\\\\\"}\" --max-time 5)"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\pavan\\OneDrive\\Desktop\\ai-risk-engine"
+    ]
+  }
+}
