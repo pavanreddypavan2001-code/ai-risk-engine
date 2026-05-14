@@ -25,8 +25,11 @@ def ask_question(payload: Question):
 
     return {
         "question": query,
-        "answer": result.get("answer"),
+        "executive_summary": result.get("executive_summary"),
+        "key_risks": result.get("key_risks", []),
+        "recommendation": result.get("recommendation"),
         "risk_score": result.get("risk_score"),
         "risk_level": result.get("risk_level"),
+        "confidence": result.get("confidence"),
         "sources": retrieved_chunks,
     }

@@ -9,17 +9,18 @@ client = chromadb.Client()
 collection = client.get_or_create_collection("financial_docs")
 
 
-def store_chunks(chunks):
-    embeddings = model.encode(chunks).tolist()
+def embed_chunks(chunks):
+    return model.encode(chunks).tolist()
 
+
+def add_to_store(chunks, embeddings):
     ids = [str(uuid.uuid4()) for _ in chunks]
+    collection.add(embeddings=embeddings, documents=chunks, ids=ids)
 
-    collection.add(
-        embeddings=embeddings,
-        documents=chunks,
-        ids=ids
-    )
 
+def store_chunks(chunks):
+    embeddings = embed_chunks(chunks)
+    add_to_store(chunks, embeddings)
     return len(chunks)
 
 

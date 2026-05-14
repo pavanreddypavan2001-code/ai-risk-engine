@@ -1,0 +1,43 @@
+services:
+
+  # ── Ollama LLM server ─────────────────────────────────────────────────────
+  ollama:
+    image: ollama/ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # ── Pull llama3.2:1b on first run ─────────────────────────────────────────
+  ollama-init:
+    image: ollama/ollama
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+    entrypoint: ["ollama", "pull", "llama3.2:1b"]
+    restart: "no"
+
+  # ── FastAPI app ───────────────────────────────────────────────────────────
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    depends_on:
+      ollama:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      - OLLAMA_URL=http://ollama:11434/api/generate
+    restart: unless-stopped
+
+volumes:
+  ollama_data:
