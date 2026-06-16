@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-GROQ_MODEL = "llama3-8b-8192"
+GROQ_MODEL = "llama-3.1-8b-instant"
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
@@ -75,7 +75,8 @@ def _generate_groq(prompt):
             "response_format": {"type": "json_object"},
         },
     )
-    response.raise_for_status()
+    if not response.ok:
+        raise RuntimeError(f"Groq {response.status_code}: {response.text}")
     return json.loads(response.json()["choices"][0]["message"]["content"])
 
 
