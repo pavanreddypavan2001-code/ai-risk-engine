@@ -1,60 +1,31 @@
-import os
-import time
-import numpy as np
-from google import genai
-from dotenv import load_dotenv
-
-load_dotenv()
-
-_client = genai.Client(
-    api_key=os.getenv("GOOGLE_API_KEY"),
-    http_options={"api_version": "v1"},
-)
-EMBED_MODEL = "text-embedding-004"
+from rank_bm25 import BM25Okapi
 
 _docs: list[str] = []
-_embeddings: list[list[float]] = []
+_bm25: BM25Okapi | None = None
 
 
-def _embed_one(text: str) -> list[float]:
-    result = _client.models.embed_content(model=EMBED_MODEL, contents=text)
-    emb = result.embeddings[0] if result.embeddings else result.embedding
-    return emb.values
-
-
-def _embed(texts: list[str]) -> list[list[float]]:
-    out = []
-    for i, text in enumerate(texts):
-        out.append(_embed_one(text))
-        # pause every 20 calls to stay within free-tier rate limit (100 req/min)
-        if (i + 1) % 20 == 0 and (i + 1) < len(texts):
-            time.sleep(12)
-    return out
+def _tokenize(text: str) -> list[str]:
+    return text.lower().split()
 
 
 def embed_chunks(chunks):
-    return _embed(chunks)
+    return [[] for _ in chunks]
 
 
-def add_to_store(chunks, embeddings):
+def add_to_store(chunks, _=None):
+    global _bm25, _docs
     _docs.extend(chunks)
-    _embeddings.extend(embeddings)
+    _bm25 = BM25Okapi([_tokenize(d) for d in _docs])
 
 
 def store_chunks(chunks):
-    embeddings = _embed(chunks)
-    add_to_store(chunks, embeddings)
+    add_to_store(chunks)
     return len(chunks)
 
 
-def search_chunks(query, n=2):
-    if not _docs:
+def search_chunks(query, n=3):
+    if not _docs or _bm25 is None:
         return []
-
-    q = np.array(_embed_one(query))
-    matrix = np.array(_embeddings)
-    scores = matrix @ q / (np.linalg.norm(matrix, axis=1) * np.linalg.norm(q) + 1e-9)
-
-    top_n = min(n, len(_docs))
-    indices = np.argsort(scores)[::-1][:top_n]
-    return [_docs[i] for i in indices]
+    scores = _bm25.get_scores(_tokenize(query))
+    top = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)[:min(n, len(_docs))]
+    return [_docs[i] for i in top]
