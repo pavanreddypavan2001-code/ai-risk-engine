@@ -6,7 +6,10 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-_client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
+_client = genai.Client(
+    api_key=os.getenv("GOOGLE_API_KEY"),
+    http_options={"api_version": "v1"},
+)
 EMBED_MODEL = "text-embedding-004"
 
 _docs: list[str] = []
