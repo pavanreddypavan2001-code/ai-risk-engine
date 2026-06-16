@@ -37,7 +37,7 @@ async def pipeline_upload(file: UploadFile = File(...)):
         })
 
         # Stage 2: Chunk
-        yield sse({"stage": "chunk", "status": "running", "message": "Splitting into 1000-char slices..."})
+        yield sse({"stage": "chunk", "status": "running", "message": "Splitting into 3000-char slices..."})
         chunks = await asyncio.to_thread(chunk_text, text)
         yield sse({
             "stage": "chunk", "status": "done",
@@ -46,16 +46,24 @@ async def pipeline_upload(file: UploadFile = File(...)):
         })
 
         # Stage 3: Embed
-        yield sse({"stage": "embed", "status": "running", "message": "Running all-MiniLM-L6-v2..."})
-        embeddings = await asyncio.to_thread(embed_chunks, chunks)
+        yield sse({"stage": "embed", "status": "running", "message": f"Embedding {len(chunks)} chunks via Google API..."})
+        try:
+            embeddings = await asyncio.to_thread(embed_chunks, chunks)
+        except Exception as e:
+            yield sse({"stage": "embed", "status": "error", "message": f"Embedding failed: {e}"})
+            return
         yield sse({
             "stage": "embed", "status": "done",
-            "message": f"{len(embeddings)} × 384-dim vectors",
+            "message": f"{len(embeddings)} vectors ready",
         })
 
         # Stage 4: Store
-        yield sse({"stage": "store", "status": "running", "message": "Indexing into ChromaDB..."})
-        await asyncio.to_thread(add_to_store, chunks, embeddings)
+        yield sse({"stage": "store", "status": "running", "message": "Storing vectors in memory..."})
+        try:
+            await asyncio.to_thread(add_to_store, chunks, embeddings)
+        except Exception as e:
+            yield sse({"stage": "store", "status": "error", "message": f"Store failed: {e}"})
+            return
         yield sse({
             "stage": "store", "status": "done",
             "message": f"{len(chunks)} vectors stored",
@@ -95,14 +103,16 @@ async def pipeline_ask(payload: AskPayload):
             yield sse({"stage": "generate", "status": "error", "message": str(e)})
             return
 
+        verdict = result.get("verdict", "Neutral")
+        score   = result.get("score", result.get("risk_score", 50))
         yield sse({
             "stage": "generate", "status": "done",
-            "message": "Risk assessment complete",
+            "message": "Assessment complete",
             "executive_summary": result.get("executive_summary"),
-            "key_risks": result.get("key_risks", []),
+            "key_points": result.get("key_points", result.get("key_risks", [])),
             "recommendation": result.get("recommendation"),
-            "risk_score": result.get("risk_score"),
-            "risk_level": result.get("risk_level"),
+            "verdict": verdict,
+            "score": score,
             "confidence": result.get("confidence"),
         })
 
