@@ -1,5 +1,5 @@
 
-def chunk_text(text, chunk_size=1000):
+def chunk_text(text, chunk_size=3000):
     chunks = []
 
     for i in range(0, len(text), chunk_size):
