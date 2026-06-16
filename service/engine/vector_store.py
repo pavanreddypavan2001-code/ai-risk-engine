@@ -1,6 +1,5 @@
-import uuid
 import os
-import chromadb
+import numpy as np
 from google import genai
 from dotenv import load_dotenv
 
@@ -9,8 +8,8 @@ load_dotenv()
 _client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
 EMBED_MODEL = "text-embedding-004"
 
-chroma = chromadb.Client()
-collection = chroma.get_or_create_collection("financial_docs")
+_docs: list[str] = []
+_embeddings: list[list[float]] = []
 
 
 def _embed(texts: list[str]) -> list[list[float]]:
@@ -23,8 +22,8 @@ def embed_chunks(chunks):
 
 
 def add_to_store(chunks, embeddings):
-    ids = [str(uuid.uuid4()) for _ in chunks]
-    collection.add(embeddings=embeddings, documents=chunks, ids=ids)
+    _docs.extend(chunks)
+    _embeddings.extend(embeddings)
 
 
 def store_chunks(chunks):
@@ -33,13 +32,14 @@ def store_chunks(chunks):
     return len(chunks)
 
 
-def search_chunks(query):
-    if collection.count() == 0:
+def search_chunks(query, n=2):
+    if not _docs:
         return []
 
-    query_embedding = _embed([query])[0]
-    results = collection.query(
-        query_embeddings=[query_embedding],
-        n_results=min(2, collection.count()),
-    )
-    return results["documents"][0]
+    q = np.array(_embed([query])[0])
+    matrix = np.array(_embeddings)
+    scores = matrix @ q / (np.linalg.norm(matrix, axis=1) * np.linalg.norm(q) + 1e-9)
+
+    top_n = min(n, len(_docs))
+    indices = np.argsort(scores)[::-1][:top_n]
+    return [_docs[i] for i in indices]
