@@ -107,7 +107,7 @@ def active_model():
         return f"Groq · {GROQ_MODEL}"
     if GOOGLE_API_KEY:
         return f"Gemini · {GEMINI_MODEL}"
-    return f"Ollama · {OLLAMA_MODEL}"
+    return "No API key configured"
 
 
 def generate_response(query, chunks):
