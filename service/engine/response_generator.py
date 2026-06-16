@@ -1,5 +1,6 @@
 import json
 import os
+import time
 import requests
 from dotenv import load_dotenv
 
@@ -12,42 +13,51 @@ GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 GEMINI_MODEL = "gemini-2.0-flash"
 
-OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434/api/generate")
-OLLAMA_MODEL = "llama3.2:1b"
 
 SYSTEM_PROMPT = (
-    "You are a senior credit risk analyst at a financial institution. "
-    "You produce structured, business-ready risk assessments from raw financial data. "
+    "You are an expert financial analyst. "
+    "You answer any question about a company or document — investment advice, risk, performance, outlook, strategy, or comparisons. "
     "Always respond with valid JSON only — no markdown, no explanation outside the JSON."
 )
 
-PROMPT_TEMPLATE = """You are a credit risk analyst. Read the financial text below and answer the question.
+PROMPT_TEMPLATE = """Read the financial document excerpts below and answer the question thoroughly.
 
-Financial Text:
+Document Content:
 {context}
 
 Question: {query}
 
-Reply ONLY with this JSON (no extra text):
+Reply ONLY with this JSON (no extra text, no markdown):
 {{
-  "executive_summary": "2-3 sentences summarising the financial situation and risk.",
-  "key_risks": ["risk factor 1", "risk factor 2", "risk factor 3"],
-  "recommendation": "1-2 sentences on what an analyst should do next.",
-  "risk_score": 50,
-  "risk_level": "Moderate",
+  "executive_summary": "3-4 sentences directly answering the question with specific numbers and facts from the document.",
+  "key_points": ["specific finding 1", "specific finding 2", "specific finding 3"],
+  "recommendation": "A clear, direct recommendation based on the question asked. If investment-related say whether to invest or not. If risk-related state the risk. Be specific.",
+  "verdict": "Positive",
+  "score": 50,
   "confidence": "Medium"
 }}
 
-Replace the placeholder values with your actual analysis. risk_score must be an integer 0-100. risk_level must be Low, Moderate, High, or Critical."""
+Rules:
+- verdict must be exactly one of: Positive, Neutral, Negative
+  * Positive = good news, good to invest, low risk, strong performance, healthy financials
+  * Neutral = mixed signals, moderate risk, uncertain outlook
+  * Negative = bad news, avoid investing, high risk, poor performance, financial distress
+- score is an integer 0-100 representing overall health/attractiveness (100 = excellent, 0 = very poor)
+  * For investment questions: 100 = strong buy, 0 = strong sell
+  * For risk questions: invert it — high risk = low score
+  * For performance questions: 100 = excellent, 0 = very poor
+- confidence must be exactly one of: High, Medium, Low
+- Use real numbers and facts from the document in your answers
+- Do NOT use placeholder text"""
 
 
 def _empty_response():
     return {
-        "executive_summary": "Insufficient financial data was found in the uploaded documents to answer this question.",
-        "key_risks": [],
-        "recommendation": "Upload a document containing the relevant financial statements and re-run the analysis.",
-        "risk_score": None,
-        "risk_level": None,
+        "executive_summary": "No relevant information was found in the uploaded documents to answer this question.",
+        "key_points": [],
+        "recommendation": "Please upload a document containing relevant information and try again.",
+        "verdict": "Neutral",
+        "score": None,
         "confidence": "Low",
     }
 
@@ -73,33 +83,30 @@ def _generate_gemini(prompt):
     from google import genai
     from google.genai import types
     client = genai.Client(api_key=GOOGLE_API_KEY)
-    response = client.models.generate_content(
-        model=GEMINI_MODEL,
-        config=types.GenerateContentConfig(
-            system_instruction=SYSTEM_PROMPT,
-            response_mime_type="application/json",
-        ),
-        contents=prompt,
-    )
-    return json.loads(response.text)
+    for attempt in range(3):
+        try:
+            response = client.models.generate_content(
+                model=GEMINI_MODEL,
+                config=types.GenerateContentConfig(
+                    system_instruction=SYSTEM_PROMPT,
+                    response_mime_type="application/json",
+                ),
+                contents=prompt,
+            )
+            return json.loads(response.text)
+        except Exception:
+            if attempt == 2:
+                raise
+            # retry on rate limit or transient errors
+            time.sleep(2 ** attempt)
 
-
-def _generate_ollama(prompt):
-    response = requests.post(OLLAMA_URL, json={
-        "model": OLLAMA_MODEL,
-        "prompt": f"{SYSTEM_PROMPT}\n\n{prompt}",
-        "stream": False,
-        "format": "json",
-    })
-    response.raise_for_status()
-    return json.loads(response.json()["response"])
 
 
 def active_model():
     if GROQ_API_KEY:
         return f"Groq · {GROQ_MODEL}"
     if GOOGLE_API_KEY:
-        return f"Gemini · {GEMINI_MODEL} (Ollama fallback)"
+        return f"Gemini · {GEMINI_MODEL}"
     return f"Ollama · {OLLAMA_MODEL}"
 
 
@@ -113,8 +120,5 @@ def generate_response(query, chunks):
     if GROQ_API_KEY:
         return _generate_groq(prompt)
     if GOOGLE_API_KEY:
-        try:
-            return _generate_gemini(prompt)
-        except Exception:
-            pass  # quota exhausted or unavailable — fall through to Ollama
-    return _generate_ollama(prompt)
+        return _generate_gemini(prompt)
+    raise RuntimeError("No API key configured. Set GOOGLE_API_KEY or GROQ_API_KEY as an environment variable.")
