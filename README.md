@@ -20,7 +20,7 @@ An AI-powered financial risk analysis tool. Upload a financial PDF and ask quest
 
 ### 1. Clone the repo
 ```bash
-git clone https://github.com/VamsiNamballa/ai-risk-engine-PavanNamballa
+git clone https://github.com/pavanreddypavan2001-code/ai-risk-engine
 cd ai-risk-engine
 ```
 

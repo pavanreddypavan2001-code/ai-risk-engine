@@ -4,10 +4,12 @@ from fastapi import APIRouter, UploadFile, File, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
+
 from service.engine.text_extractor import extract_text
 from service.engine.chunker import chunk_text
 from service.engine.vector_store import embed_chunks, add_to_store, search_chunks
 from service.engine.response_generator import generate_response
+from service.engine.risk_calculator import extract_financial_metrics, calculate_ratios, classify_risk
 
 router = APIRouter(prefix="/pipeline")
 
@@ -95,6 +97,26 @@ async def pipeline_ask(payload: AskPayload):
             "chunks": chunks,
         })
 
+        # Stage 1.5: Deterministic risk calculation
+        yield sse({"stage": "risk_calc", "status": "running", "message": "Extracting financial metrics and computing ratios..."})
+        risk_result = None
+        try:
+            metrics = await asyncio.to_thread(extract_financial_metrics, chunks)
+            ratios = calculate_ratios(metrics)
+            risk_result = classify_risk(ratios)
+        except Exception as e:
+            yield sse({"stage": "risk_calc", "status": "error", "message": str(e)})
+        else:
+            yield sse({
+                "stage": "risk_calc", "status": "done",
+                "message": "Risk calculation complete",
+                "metrics": metrics,
+                "ratios": ratios,
+                "risk_score": risk_result["risk_score"],
+                "risk_level": risk_result["risk_level"],
+                "flags": risk_result["flags"],
+            })
+
         # Stage 2: Generate
         yield sse({"stage": "generate", "status": "running", "message": "Generating structured risk assessment..."})
         try:
@@ -114,6 +136,7 @@ async def pipeline_ask(payload: AskPayload):
             "verdict": verdict,
             "score": score,
             "confidence": result.get("confidence"),
+            "calculated_risk": risk_result,
         })
 
         yield sse({"stage": "complete", "status": "done"})
@@ -123,3 +146,4 @@ async def pipeline_ask(payload: AskPayload):
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
