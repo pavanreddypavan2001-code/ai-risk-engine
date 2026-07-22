@@ -4,6 +4,7 @@ from fastapi import APIRouter, UploadFile, File, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
+
 from service.engine.text_extractor import extract_text
 from service.engine.chunker import chunk_text
 from service.engine.vector_store import embed_chunks, add_to_store, search_chunks
@@ -123,3 +124,5 @@ async def pipeline_ask(payload: AskPayload):
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+from service.engine.risk_calculator import extract_financial_metrics, calculate_ratios, classify_risk
