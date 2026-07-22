@@ -199,3 +199,49 @@ def classify_risk(ratios: dict) -> dict:
         risk_level = "Critical"
 
     return {"risk_score": risk_score, "risk_level": risk_level, "flags": flags}
+
+if __name__ == "__main__":
+    sample_metrics = {
+        "revenue": 500000,
+        "net_income": 45000,
+        "total_debt": 300000,
+        "total_equity": 200000,
+        "current_assets": 150000,
+        "current_liabilities": 100000,
+        "inventory": 40000,
+        "total_assets": 500000,
+        "ebit": 60000,
+        "interest_expense": 20000,
+        "ebitda": 80000,
+        "operating_cash_flow": 55000,
+    }
+
+    print("=== HEALTHY COMPANY ===")
+    ratios = calculate_ratios(sample_metrics)
+    for k, v in ratios.items():
+        print(f"  {k}: {v}")
+    result = classify_risk(ratios)
+    print(f"  -> risk_score: {result['risk_score']}, risk_level: {result['risk_level']}")
+    print(f"  -> flags: {result['flags']}")
+
+    print("\n=== RISKY COMPANY ===")
+    risky_metrics = {
+        "revenue": 500000,
+        "net_income": -20000,       # losing money
+        "total_debt": 800000,       # heavily leveraged
+        "total_equity": 100000,
+        "current_assets": 60000,
+        "current_liabilities": 120000,  # can't cover short-term debts
+        "inventory": 30000,
+        "total_assets": 500000,
+        "ebit": -5000,
+        "interest_expense": 40000,  # can't cover interest
+        "ebitda": 15000,
+        "operating_cash_flow": -10000,
+    }
+    ratios2 = calculate_ratios(risky_metrics)
+    for k, v in ratios2.items():
+        print(f"  {k}: {v}")
+    result2 = classify_risk(ratios2)
+    print(f"  -> risk_score: {result2['risk_score']}, risk_level: {result2['risk_level']}")
+    print(f"  -> flags: {result2['flags']}")
