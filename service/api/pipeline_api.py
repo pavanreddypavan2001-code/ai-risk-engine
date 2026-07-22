@@ -9,6 +9,7 @@ from service.engine.text_extractor import extract_text
 from service.engine.chunker import chunk_text
 from service.engine.vector_store import embed_chunks, add_to_store, search_chunks
 from service.engine.response_generator import generate_response
+from service.engine.risk_calculator import extract_financial_metrics, calculate_ratios, classify_risk
 
 router = APIRouter(prefix="/pipeline")
 
@@ -146,4 +147,3 @@ async def pipeline_ask(payload: AskPayload):
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
 
-from service.engine.risk_calculator import extract_financial_metrics, calculate_ratios, classify_risk
